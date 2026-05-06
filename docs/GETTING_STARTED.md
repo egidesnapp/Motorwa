@@ -79,6 +79,7 @@ Your services will be available at:
 | **Web App (Next.js)** | [http://localhost:3000](http://localhost:3000) |
 | **API (Express.js)** | [http://localhost:3001](http://localhost:3001) |
 | **Admin Panel** | [http://localhost:3002](http://localhost:3002) |
+| **PGAdmin** | [http://localhost:5050](http://localhost:5050) |
 | **PostgreSQL** | `localhost:5432` |
 | **Redis** | `localhost:6379` |
 | **API Health Check** | [http://localhost:3001/health](http://localhost:3001/health) |
@@ -216,34 +217,38 @@ Then visit [http://localhost:3000](http://localhost:3000) to see the MotorWa hom
 
 ## 4. Database Management with PGAdmin
 
-### 4.1 Install PGAdmin 4
+### 4.1 Access PGAdmin (Docker — Recommended)
 
-Download from: [https://www.pgadmin.org/download/](https://www.pgadmin.org/download/)
+PGAdmin is included in `docker-compose.yml` and starts automatically:
 
-- **Windows:** Run the `.exe` installer
-- **macOS:** Download the `.dmg`
-- **Linux:** Use your package manager (`sudo apt install pgadmin4`)
+```bash
+docker compose up -d
+```
+
+Open [http://localhost:5050](http://localhost:5050) in your browser.
+
+**Login credentials:**
+- **Email:** `admin@motorwa.rw`
+- **Password:** `admin`
 
 ### 4.2 Connect to the MotorWa Database
 
-1. **Open PGAdmin 4** in your browser (usually at `http://localhost:5050` or as a desktop app)
+1. In PGAdmin, right-click **"Servers"** → **Register** → **Server**
 
-2. **Right-click "Servers"** → **Register** → **Server**
-
-3. **General tab:**
+2. **General tab:**
    - **Name:** `MotorWa Dev`
 
-4. **Connection tab:**
-   - **Host:** `localhost`
+3. **Connection tab:**
+   - **Host name/address:** `motorwa-postgres` (Docker network name) or `localhost` (if accessing from outside Docker)
    - **Port:** `5432`
    - **Maintenance database:** `motorwa_dev`
    - **Username:** `motorwa`
    - **Password:** `motorwa_password`
    - Check **"Save password"**
 
-5. Click **Save**
+4. Click **Save**
 
-6. Expand **Servers → MotorWa Dev → Databases → motorwa_dev → Schemas → public → Tables**
+5. Expand **Servers → MotorWa Dev → Databases → motorwa_dev → Schemas → public → Tables**
 
 You should see all 20+ tables:
 
@@ -267,7 +272,17 @@ Transaction
 AdminLog
 ```
 
-### 4.3 Common PGAdmin Tasks
+### 4.3 Install PGAdmin Locally (Alternative)
+
+If you prefer a desktop install instead of the Docker service:
+
+Download from: [https://www.pgadmin.org/download/](https://www.pgadmin.org/download/)
+
+- **Windows:** Run the `.exe` installer
+- **macOS:** Download the `.dmg`
+- **Linux:** Use your package manager (`sudo apt install pgadmin4`)
+
+### 4.4 Common PGAdmin Tasks
 
 #### View all users
 
@@ -315,26 +330,32 @@ CREATE SCHEMA public;
 
 Then run `pnpm db:migrate` again to recreate all tables.
 
-### 4.4 Using PGAdmin with Docker-based PGAdmin (Alternative)
+### 4.5 PGAdmin Server Configuration (Production)
 
-Instead of installing PGAdmin locally, you can run it in Docker:
+In production (`docker-compose.prod.yml`), PGAdmin is bound to `127.0.0.1:5050` for security — it's only accessible from the server itself. To access it remotely:
 
+**Option A: SSH tunnel (recommended)**
 ```bash
-docker run -d \
-  --name motorwa-pgadmin \
-  -p 5050:80 \
-  -e PGADMIN_DEFAULT_EMAIL=admin@motorwa.rw \
-  -e PGADMIN_DEFAULT_PASSWORD=admin \
-  dpage/pgadmin4:latest
+ssh -L 5050:localhost:5050 user@your-server
+```
+Then open [http://localhost:5050](http://localhost:5050) locally.
+
+**Option B: Nginx reverse proxy with authentication**
+
+Add to `deploy/nginx/nginx.conf`:
+```nginx
+location /pgadmin/ {
+    auth_basic "PGAdmin";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    proxy_pass http://pgadmin:80/;
+    proxy_set_header Host $host;
+}
 ```
 
-Then open [http://localhost:5050](http://localhost:5050) and connect using the credentials in [Section 4.2](#42-connect-to-the-motorwa-database).
-
-To stop it:
-
-```bash
-docker stop motorwa-pgadmin
-docker rm motorwa-pgadmin
+Change PGAdmin credentials in `.env.production`:
+```env
+PGADMIN_EMAIL=dba@motorwa.rw
+PGADMIN_PASSWORD=<strong-password>
 ```
 
 ---
