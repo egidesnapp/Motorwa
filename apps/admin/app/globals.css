@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #FAFAF7;
+    --foreground: #1A1A16;
+  }
+  * { @apply border-gray-200; }
+  body { @apply bg-cream text-gray-900 font-body; }
+}
+
+@layer components {
+  .btn-primary { @apply bg-gold text-navy font-semibold px-4 py-2.5 rounded-md hover:bg-gold-light transition-colors; }
+  .btn-secondary { @apply bg-transparent border border-navy text-navy px-4 py-2.5 rounded-md hover:bg-navy/5 transition-colors; }
+  .input { @apply border border-gray-200 rounded-md px-3.5 py-2.5 focus:border-gold focus:ring-2 focus:ring-gold/20 outline-none transition-all; }
+  .badge-verified { @apply bg-success-pale text-success border border-success/30; }
+  .badge-pending { @apply bg-warning-pale text-warning; }
+  .badge-sold { @apply bg-gray-100 text-gray-400; }
+  .badge-error { @apply bg-error-pale text-error; }
+}

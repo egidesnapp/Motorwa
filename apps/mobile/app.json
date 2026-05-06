@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "MotorWa",
+    "slug": "motorwa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F2340"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "rw.motorwa.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MotorWa needs access to your camera to take photos of your car.",
+        "NSPhotoLibraryUsageDescription": "MotorWa needs access to your photos to upload car images.",
+        "NSLocationWhenInUseUsageDescription": "MotorWa needs your location to find cars near you.",
+        "NSFaceIDUsageDescription": "MotorWa uses Face ID for secure login."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F2340"
+      },
+      "package": "rw.motorwa.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "expo-local-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0F2340",
+          "sounds": []
+        }
+      ]
+    ],
+    "scheme": "motorwa",
+    "extra": {
+      "eas": {
+        "projectId": "PROJECT_ID_FROM_EAS"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/PROJECT_ID_FROM_EAS"
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    }
+  }
+}

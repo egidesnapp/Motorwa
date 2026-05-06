@@ -1,0 +1,48 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths: ['packages/api/**', 'packages/database/**', 'packages/shared/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run type check
+        run: pnpm typecheck
+
+      - name: Build API
+        run: cd packages/api && pnpm build
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /var/www/motorwa
+            git pull origin main
+            pnpm install --frozen-lockfile
+            cd packages/database && pnpm db:migrate
+            cd ../api && pnpm build
+            pm2 restart motorwa-api

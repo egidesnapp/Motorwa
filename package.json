@@ -1,0 +1,27 @@
+{
+  "name": "motorwa-rw",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Rwanda's Trusted Car Marketplace",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "db:generate": "turbo --filter=@motorwa/database db:generate",
+    "db:migrate": "turbo --filter=@motorwa/database db:migrate",
+    "db:studio": "turbo --filter=@motorwa/database db:studio",
+    "db:seed": "turbo --filter=@motorwa/database db:seed",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:reset": "docker-compose down -v && docker-compose up -d"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
