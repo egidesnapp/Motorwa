@@ -113,7 +113,6 @@ model User {
   username          String    @unique
   passwordHash      String
   phone             String?   @unique
-  phoneEncrypted    String?
   email             String?   @unique
   fullName          String
   profilePhotoUrl   String?

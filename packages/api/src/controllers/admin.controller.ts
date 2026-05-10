@@ -1,6 +1,10 @@
 import { Response } from 'express';
 import { prisma } from '@motorwa/database';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { z } from 'zod';
+
+const reasonSchema = z.string().min(1, 'Reason is required').max(500);
+const adminNotesSchema = z.string().max(1000).optional();
 
 export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
@@ -91,6 +95,7 @@ export const approveListing = async (req: AuthRequest, res: Response) => {
 export const rejectListing = async (req: AuthRequest, res: Response) => {
   try {
     const { reason } = req.body as { reason: string };
+    reasonSchema.parse(reason);
 
     await prisma.listing.update({
       where: { id: req.params.id },
@@ -109,7 +114,10 @@ export const rejectListing = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true, data: { message: 'Listing rejected' } });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.errors) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: error.errors });
+    }
     res.status(500).json({ success: false, error: 'Failed to reject listing' });
   }
 };
@@ -156,6 +164,7 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
 export const banUser = async (req: AuthRequest, res: Response) => {
   try {
     const { reason } = req.body as { reason: string };
+    reasonSchema.parse(reason);
 
     await prisma.user.update({
       where: { id: req.params.id },
@@ -174,7 +183,10 @@ export const banUser = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true, data: { message: 'User banned' } });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.errors) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: error.errors });
+    }
     res.status(500).json({ success: false, error: 'Failed to ban user' });
   }
 };
@@ -266,15 +278,21 @@ export const getReports = async (req: AuthRequest, res: Response) => {
 
 export const resolveReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { adminNotes } = req.body as { adminNotes: string };
+    const adminNotes = req.body.adminNotes;
+    if (adminNotes !== undefined) {
+      adminNotesSchema.parse(adminNotes);
+    }
 
     await prisma.report.update({
       where: { id: req.params.id },
-      data: { status: 'RESOLVED', adminNotes, resolvedAt: new Date() },
+      data: { status: 'RESOLVED', adminNotes: adminNotes || null, resolvedAt: new Date() },
     });
 
     res.json({ success: true, data: { message: 'Report resolved' } });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.errors) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: error.errors });
+    }
     res.status(500).json({ success: false, error: 'Failed to resolve report' });
   }
 };

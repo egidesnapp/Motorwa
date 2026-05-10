@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { createHash } from 'crypto';
+import crypto from 'crypto';
 import { prisma } from '@motorwa/database';
 
 const MTN_BASE_URL = process.env.MTN_BASE_URL || 'https://sandbox.momodeveloper.mtn.com';
@@ -25,7 +25,7 @@ const getMtnToken = async (): Promise<string> => {
     },
   });
 
-  mtnAccessToken = response.data.access_token;
+  mtnAccessToken = response.data.access_token as string;
   mtnTokenExpiry = new Date(Date.now() + 55 * 60 * 1000);
 
   return mtnAccessToken;
@@ -91,8 +91,9 @@ export const checkMtnPaymentStatus = async (referenceId: string): Promise<'PENDI
 };
 
 export const verifyMtnWebhook = (payload: string, signature: string): boolean => {
-  const webhookSecret = process.env.MTN_WEBHOOK_SECRET || '';
-  const expectedSignature = createHash('sha256')
+  const webhookSecret = process.env.MTN_WEBHOOK_SECRET;
+  if (!webhookSecret) throw new Error('MTN_WEBHOOK_SECRET is not set');
+  const expectedSignature = crypto.createHash('sha256')
     .update(webhookSecret + payload)
     .digest('hex');
   return signature === expectedSignature;

@@ -1,107 +1,80 @@
-import { PrismaClient, UserRole, Province } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  // Hash passwords
+  const adminPassword = await bcrypt.hash("AdminPass123!", 10);
+  const dealerPassword = await bcrypt.hash("DealerPass123!", 10);
+  const userPassword = await bcrypt.hash("UserPass123!", 10);
 
-  const passwordHash = await bcrypt.hash('Admin@123', 12);
+  // Clear existing users
+  await prisma.user.deleteMany();
 
-  // ─── ADMIN USER ──────────────────────────────────
-  const admin = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: {},
-    create: {
-      username: 'admin',
-      passwordHash,
-      fullName: 'System Administrator',
-      phone: '+250780000001',
-      email: 'admin@motorwa.rw',
-      role: 'ADMIN',
+  // Create admin user
+  const admin = await prisma.user.create({
+    data: {
+      username: "admin",
+      passwordHash: adminPassword,
+      fullName: "Admin User",
+      email: "admin@motorwa.rw",
+      phone: "+250788123456",
+      role: "ADMIN",
       isPhoneVerified: true,
       isIdVerified: true,
-      province: 'KIGALI',
-      district: 'Nyarugenge',
-      language: 'en',
     },
   });
-  console.log(`  ✓ Admin user: "admin" / "Admin@123"`);
 
-  // ─── DEALER USER ─────────────────────────────────
-  const dealerPassword = await bcrypt.hash('Dealer@123', 12);
-  const dealer = await prisma.user.upsert({
-    where: { username: 'dealer' },
-    update: {},
-    create: {
-      username: 'dealer',
+  // Create dealer user
+  const dealer = await prisma.user.create({
+    data: {
+      username: "dealer",
       passwordHash: dealerPassword,
-      fullName: 'Jean Baptiste Garage',
-      phone: '+250780000002',
-      email: 'dealer@motorwa.rw',
-      role: 'DEALER',
+      fullName: "Dealer User",
+      email: "dealer@motorwa.rw",
+      phone: "+250788123457",
+      role: "DEALER",
       isPhoneVerified: true,
       isIdVerified: true,
-      province: 'KIGALI',
-      district: 'Gasabo',
-      language: 'en',
+      dealer: {
+        create: {
+          businessName: "Premium Cars Ltd",
+          description: "Leading car dealership in Rwanda",
+          province: "KIGALI",
+          district: "Gasabo",
+          address: "KG 123 Street",
+          isApproved: true,
+        },
+      },
     },
   });
-  console.log(`  ✓ Dealer user: "dealer" / "Dealer@123"`);
 
-  // Dealer profile
-  await prisma.dealer.upsert({
-    where: { userId: dealer.id },
-    update: {},
-    create: {
-      userId: dealer.id,
-      businessName: 'JB Motors Ltd',
-      description: 'Trusted car dealer in Kigali with over 10 years of experience.',
-      district: 'Gasabo',
-      province: 'KIGALI',
-      address: 'KG 123 St, Kigali',
-      subscriptionPlan: 'monthly',
-      subscriptionStart: new Date(),
-      subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      isApproved: true,
-      teamLimit: 10,
-    },
-  });
-  console.log('  ✓ Dealer profile created');
-
-  // ─── REGULAR USER ────────────────────────────────
-  const userPassword = await bcrypt.hash('User@123', 12);
-  const regularUser = await prisma.user.upsert({
-    where: { username: 'user' },
-    update: {},
-    create: {
-      username: 'user',
+  // Create regular user
+  const user = await prisma.user.create({
+    data: {
+      username: "user",
       passwordHash: userPassword,
-      fullName: 'Alice Mukamana',
-      phone: '+250780000003',
-      email: 'alice@example.com',
-      role: 'USER',
+      fullName: "Regular User",
+      email: "user@motorwa.rw",
+      phone: "+250788123458",
+      role: "USER",
       isPhoneVerified: true,
-      isIdVerified: false,
-      province: 'SOUTHERN',
-      district: 'Huye',
-      language: 'rw',
     },
   });
-  console.log(`  ✓ Regular user: "user" / "User@123"`);
 
-  console.log('\n✅ Seeding complete!');
-  console.log('\nCredentials:');
-  console.log('  Admin  → username: "admin"  password: "Admin@123"');
-  console.log('  Dealer → username: "dealer" password: "Dealer@123"');
-  console.log('  User   → username: "user"   password: "User@123"');
+  console.log("✅ Seed data created:");
+  console.log(`Admin: username=admin, password=AdminPass123!`);
+  console.log(`Dealer: username=dealer, password=DealerPass123!`);
+  console.log(`User: username=user, password=UserPass123!`);
 }
 
 main()
-  .catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
+  .then(async () => {
     await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
   });

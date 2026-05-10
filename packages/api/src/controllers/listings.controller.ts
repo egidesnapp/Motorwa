@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '@motorwa/database';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { createListingSchema, updateListingSchema, searchParamsSchema } from '@motorwa/shared';
+import { sanitizeHtml } from '../utils/sanitize';
 
 const generateSlug = (title: string): string => {
   return title
@@ -15,7 +16,7 @@ export const createListing = async (req: AuthRequest, res: Response) => {
   try {
     const data = createListingSchema.parse(req.body);
 
-    const title = `${data.year} ${data.make} ${data.model}`;
+    const title = sanitizeHtml(`${data.year} ${data.make} ${data.model}`);
     const slug = generateSlug(title);
 
     const listing = await prisma.listing.create({
@@ -23,6 +24,7 @@ export const createListing = async (req: AuthRequest, res: Response) => {
         ...data,
         title,
         slug,
+        description: sanitizeHtml(data.description),
         userId: req.user!.id,
         priceRwf: BigInt(data.priceRwf),
       },
@@ -168,12 +170,15 @@ export const updateListing = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const sanitized = {
+      ...data,
+      ...(data.description && { description: sanitizeHtml(data.description) }),
+      ...(data.priceRwf && { priceRwf: BigInt(data.priceRwf) }),
+    };
+
     const updated = await prisma.listing.update({
       where: { id: listing.id },
-      data: {
-        ...data,
-        ...(data.priceRwf && { priceRwf: BigInt(data.priceRwf) }),
-      },
+      data: sanitized,
     });
 
     res.json({ success: true, data: updated });
@@ -244,6 +249,18 @@ export const revealPhone = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Listing not found' });
     }
 
+    if (req.user!.id === listing.userId) {
+      return res.status(400).json({ success: false, error: 'Cannot reveal your own phone' });
+    }
+
+    const existing = await prisma.phoneReveal.findFirst({
+      where: { revealedBy: req.user!.id, listingId: listing.id },
+    });
+
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Phone already revealed' });
+    }
+
     await prisma.phoneReveal.create({
       data: {
         revealedBy: req.user!.id,
@@ -270,7 +287,7 @@ export const updateListingStatus = async (req: AuthRequest, res: Response) => {
     }
 
     const { status } = req.body as { status: string };
-    const validStatuses = ['DRAFT', 'PENDING_REVIEW', 'ACTIVE', 'SOLD', 'EXPIRED'];
+    const validStatuses = ['DRAFT', 'PENDING_REVIEW', 'SOLD', 'EXPIRED'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ success: false, error: 'Invalid status' });
     }

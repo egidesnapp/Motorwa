@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { prisma } from '@motorwa/database';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { updateProfileSchema } from '@motorwa/shared';
 
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
@@ -34,16 +35,16 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
 export const updateMe = async (req: AuthRequest, res: Response) => {
   try {
-    const { fullName, email, province, district, language } = req.body;
+    const validated = updateProfileSchema.parse(req.body);
 
     const user = await prisma.user.update({
       where: { id: req.user!.id },
       data: {
-        ...(fullName && { fullName }),
-        ...(email && { email }),
-        ...(province && { province }),
-        ...(district && { district }),
-        ...(language && { language }),
+        ...(validated.fullName && { fullName: validated.fullName }),
+        ...(validated.email && { email: validated.email }),
+        ...(validated.province && { province: validated.province }),
+        ...(validated.district && { district: validated.district }),
+        ...(validated.language && { language: validated.language }),
       },
       select: {
         id: true,
@@ -62,7 +63,10 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.errors) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: error.errors });
+    }
     res.status(500).json({ success: false, error: 'Failed to update profile' });
   }
 };

@@ -1,0 +1,1 @@
+SELECT username, role, "fullName" FROM "User" LIMIT 5;

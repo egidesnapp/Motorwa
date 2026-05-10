@@ -87,3 +87,11 @@ export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+export const updateProfileSchema = z.object({
+  fullName: z.string().min(2).max(100).optional(),
+  email: z.string().email('Invalid email').optional(),
+  province: z.enum(['KIGALI', 'NORTHERN', 'SOUTHERN', 'EASTERN', 'WESTERN']).optional(),
+  district: z.string().min(1).max(100).optional(),
+  language: z.enum(['en', 'fr', 'rw']).optional(),
+});

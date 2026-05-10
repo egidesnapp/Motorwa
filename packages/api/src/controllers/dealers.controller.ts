@@ -40,7 +40,7 @@ export const getDealer = async (req: AuthRequest, res: Response) => {
         isApproved: true,
       },
       include: {
-        user: { select: { id: true, fullName: true, phone: true, averageRating: true, reviewCount: true } },
+        user: { select: { id: true, fullName: true, averageRating: true, reviewCount: true } },
       },
     });
 
@@ -95,9 +95,19 @@ export const updateDealer = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Dealer profile not found' });
     }
 
+    const { businessName, description, address, district, province, websiteUrl, operatingHours } = req.body;
+
     const updated = await prisma.dealer.update({
       where: { id: dealer.id },
-      data: req.body,
+      data: {
+        ...(businessName && { businessName }),
+        ...(description && { description }),
+        ...(address && { address }),
+        ...(district && { district }),
+        ...(province && { province }),
+        ...(websiteUrl && { websiteUrl }),
+        ...(operatingHours && { operatingHours }),
+      },
     });
 
     res.json({ success: true, data: updated });

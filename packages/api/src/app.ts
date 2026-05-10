@@ -21,8 +21,21 @@ import inspectionsRoutes from './routes/inspections.routes';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for rate limiting behind reverse proxy
+app.set('trust proxy', 1);
+
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:', process.env.S3_BUCKET_URL || ''].filter(Boolean),
+      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:3000', process.env.ADMIN_URL || 'http://localhost:3002'].filter(Boolean),
+    },
+  },
+}));
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -33,7 +46,7 @@ app.use(cors({
 
 // Body parsing
 app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // Logging

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { createHash } from 'crypto';
+import crypto from 'crypto';
 
 const AIRTEL_BASE_URL = process.env.AIRTEL_BASE_URL || 'https://openapi-sandbox.airtel.africa';
 const AIRTEL_CLIENT_ID = process.env.AIRTEL_CLIENT_ID || '';
@@ -19,7 +19,7 @@ const getAirtelToken = async (): Promise<string> => {
     grant_type: 'client_credentials',
   });
 
-  airtelAccessToken = response.data.access_token;
+  airtelAccessToken = response.data.access_token as string;
   airtelTokenExpiry = new Date(Date.now() + 55 * 60 * 1000);
 
   return airtelAccessToken;
@@ -79,8 +79,9 @@ export const checkAirtelPaymentStatus = async (reference: string): Promise<'PEND
 };
 
 export const verifyAirtelWebhook = (payload: string, signature: string): boolean => {
-  const webhookSecret = process.env.AIRTEL_WEBHOOK_SECRET || '';
-  const expectedSignature = createHash('sha256')
+  const webhookSecret = process.env.AIRTEL_WEBHOOK_SECRET;
+  if (!webhookSecret) throw new Error('AIRTEL_WEBHOOK_SECRET is not set');
+  const expectedSignature = crypto.createHash('sha256')
     .update(webhookSecret + payload)
     .digest('hex');
   return signature === expectedSignature;

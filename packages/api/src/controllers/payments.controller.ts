@@ -16,16 +16,39 @@ const PRICES: Record<string, number> = {
 
 export const initiatePayment = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, provider, itemKey, payerPhone } = req.body as {
+    const { type, provider, itemKey, payerPhone, listingId } = req.body as {
       type: string;
       provider: 'MTN' | 'AIRTEL';
       itemKey: string;
       payerPhone: string;
+      listingId?: string;
     };
 
     const amount = PRICES[itemKey];
     if (!amount) {
       return res.status(400).json({ success: false, error: 'Invalid payment item' });
+    }
+
+    // Replay prevention: check for existing pending payment
+    const existing = await prisma.payment.findFirst({
+      where: {
+        userId: req.user!.id,
+        type: type as any,
+        status: 'PENDING',
+        metadata: { path: ['itemKey'], equals: itemKey },
+      },
+    });
+
+    if (existing) {
+      return res.json({
+        success: true,
+        data: {
+          paymentId: existing.id,
+          reference: existing.providerReference,
+          amount,
+          status: 'PENDING',
+        },
+      });
     }
 
     const idempotencyKey = `${req.user!.id}-${itemKey}-${Date.now()}`;
@@ -37,7 +60,7 @@ export const initiatePayment = async (req: AuthRequest, res: Response) => {
         amountRwf: amount,
         provider: provider as any,
         idempotencyKey,
-        metadata: { itemKey, payerPhone },
+        metadata: { itemKey, payerPhone, listingId },
       },
     });
 
@@ -186,13 +209,16 @@ export const getPayment = async (req: AuthRequest, res: Response) => {
 const handlePaymentSuccess = async (payment: any) => {
   const metadata = payment.metadata as any;
   const itemKey = metadata?.itemKey;
+  const listingId = metadata?.listingId;
 
   if (!itemKey) return;
 
   if (itemKey.startsWith('listing_boost')) {
     const days = itemKey.includes('30d') ? 30 : 7;
+    const where: any = { userId: payment.userId };
+    if (listingId) where.id = listingId;
     await prisma.listing.updateMany({
-      where: { userId: payment.userId },
+      where,
       data: {
         isBoosted: true,
         boostedUntil: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
@@ -202,8 +228,10 @@ const handlePaymentSuccess = async (payment: any) => {
 
   if (itemKey.startsWith('featured_listing')) {
     const days = itemKey.includes('30d') ? 30 : 7;
+    const where: any = { userId: payment.userId };
+    if (listingId) where.id = listingId;
     await prisma.listing.updateMany({
-      where: { userId: payment.userId },
+      where,
       data: {
         isFeatured: true,
         featuredUntil: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
