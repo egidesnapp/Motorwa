@@ -15,6 +15,7 @@ export const CAR_MAKES = [
 ] as const;
 
 export const PHONE_REGEX = /^\+250[0-9]{9}$/;
+export const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 export const formatPhone = (phone: string): string => {
   const cleaned = phone.replace(/\s/g, '');

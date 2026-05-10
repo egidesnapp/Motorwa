@@ -45,7 +45,7 @@ export const getListings = async (req: AuthRequest, res: Response) => {
       prisma.listing.findMany({
         where,
         include: {
-          user: { select: { id: true, fullName: true, phone: true } },
+          user: { select: { id: true, username: true, fullName: true, phone: true } },
           photos: { where: { isPrimary: true }, take: 1 },
         },
         orderBy: { createdAt: 'desc' },
@@ -132,10 +132,10 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        select: {
-          id: true, fullName: true, phone: true, email: true, role: true,
-          isIdVerified: true, isBanned: true, listingCount: true, createdAt: true,
-        },
+          select: {
+            id: true, username: true, fullName: true, phone: true, email: true, role: true,
+            isIdVerified: true, isBanned: true, listingCount: true, createdAt: true,
+          },
         orderBy: { createdAt: 'desc' },
         skip: (parseInt(page) - 1) * parseInt(limit),
         take: parseInt(limit),

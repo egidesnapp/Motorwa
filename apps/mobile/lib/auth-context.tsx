@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 
 interface User {
   id: string;
-  phone: string;
+  username: string;
+  phone?: string;
   fullName: string;
   role: string;
   isPhoneVerified: boolean;

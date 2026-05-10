@@ -8,6 +8,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       where: { id: req.user!.id },
       select: {
         id: true,
+        username: true,
         phone: true,
         email: true,
         fullName: true,
@@ -46,6 +47,7 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
       },
       select: {
         id: true,
+        username: true,
         phone: true,
         email: true,
         fullName: true,

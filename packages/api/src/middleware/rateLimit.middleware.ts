@@ -15,15 +15,6 @@ export const globalLimiter = rateLimit({
   }),
 });
 
-export const otpLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  message: { success: false, error: 'Too many OTP requests. Please try again in an hour.' },
-  store: new RedisStore({
-    sendCommand: (...args: string[]) => redis.call(...args),
-  }),
-});
-
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,

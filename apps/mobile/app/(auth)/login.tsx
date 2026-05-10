@@ -9,10 +9,11 @@ import { Colors, BorderRadius, FontSizes } from '@/constants/theme';
 import apiClient from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { isBiometricSupported, authenticateWithBiometrics, isBiometricLoginEnabled } from '@/lib/biometrics';
-import { Fingerprint } from 'lucide-react-native';
+import { User, Lock, Fingerprint } from 'lucide-react-native';
 
 export default function LoginScreen() {
-  const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const { login } = useAuth();
@@ -28,17 +29,6 @@ export default function LoginScreen() {
     checkBiometric();
   }, []);
 
-  const formatPhone = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.startsWith('0') && cleaned.length === 10) {
-      return `+250${cleaned.slice(1)}`;
-    }
-    if (cleaned.startsWith('250') && cleaned.length === 12) {
-      return `+${cleaned}`;
-    }
-    return value;
-  };
-
   const handleBiometricLogin = async () => {
     const success = await authenticateWithBiometrics();
     if (success) {
@@ -52,23 +42,29 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSendOtp = async () => {
-    if (!phone.trim()) {
-      Alert.alert('Error', 'Please enter your phone number');
+  const handleLogin = async () => {
+    if (!username.trim()) {
+      Alert.alert('Error', 'Please enter your username');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Error', 'Please enter your password');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await apiClient.post('/api/v1/auth/send-otp', {
-        phone: formatPhone(phone),
+      const res = await apiClient.post('/api/v1/auth/login', {
+        username: username.trim(),
+        password,
       });
 
       if (res.data.success) {
-        router.push({ pathname: '/(auth)/verify', params: { phone: formatPhone(phone) } });
+        await login(res.data.data.accessToken, '', res.data.data.user);
+        router.replace('/(tabs)');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to send OTP');
+      Alert.alert('Error', error.response?.data?.error || 'Invalid username or password');
     } finally {
       setLoading(false);
     }
@@ -79,8 +75,8 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.logo}>MotorWa<Text style={styles.logoLight}>.rw</Text></Text>
-          <Text style={styles.title}>Enter your phone number</Text>
-          <Text style={styles.subtitle}>We will send you a 6-digit verification code</Text>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
         {biometricAvailable && (
@@ -90,32 +86,53 @@ export default function LoginScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
+        {biometricAvailable && (
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        )}
 
         <View style={styles.form}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputPrefix}>+250</Text>
+            <User size={20} color={Colors.gray400} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="7XX XXX XXX"
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Username"
               placeholderTextColor={Colors.gray400}
-              keyboardType="phone-pad"
-              maxLength={12}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={handleSendOtp} disabled={loading}>
+          <View style={styles.inputWrapper}>
+            <Lock size={20} color={Colors.gray400} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={Colors.gray400}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
             {loading ? (
               <ActivityIndicator color={Colors.navy} />
             ) : (
-              <Text style={styles.buttonText}>Send Code</Text>
+              <Text style={styles.buttonText}>Sign In</Text>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+            <Text style={styles.linkText}>
+              Don't have an account? <Text style={styles.linkHighlight}>Create one</Text>
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -141,10 +158,12 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.gray200 },
   dividerText: { fontSize: FontSizes.sm, color: Colors.gray400, marginHorizontal: 12 },
   form: { gap: 16 },
-  inputWrapper: { flexDirection: 'row', backgroundColor: Colors.white, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.gray200, overflow: 'hidden' },
-  inputPrefix: { paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: Colors.gray900, backgroundColor: Colors.gray100, fontWeight: '600' },
+  inputWrapper: { flexDirection: 'row', backgroundColor: Colors.white, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.gray200, overflow: 'hidden', alignItems: 'center' },
+  inputIcon: { marginLeft: 16 },
   input: { flex: 1, paddingVertical: 16, paddingHorizontal: 12, fontSize: 16, color: Colors.gray900 },
   button: { backgroundColor: Colors.gold, borderRadius: BorderRadius.md, paddingVertical: 16, alignItems: 'center' },
   buttonText: { fontSize: 16, fontWeight: '600', color: Colors.navy },
+  linkText: { textAlign: 'center', color: Colors.gray500, fontSize: 14, marginTop: 8 },
+  linkHighlight: { color: Colors.gold, fontWeight: '600' },
   footer: { fontSize: 13, color: Colors.gray400, textAlign: 'center', marginTop: 32 },
 });

@@ -1,58 +1,119 @@
 import { Request, Response } from 'express';
 import { prisma } from '@motorwa/database';
+import bcrypt from 'bcryptjs';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken, revokeAllRefreshTokens } from '../utils/jwt';
-import { sendOtp, verifyOtp } from '../utils/otp';
-import { sendOtpSchema, verifyOtpSchema } from '@motorwa/shared';
+import { registerSchema, loginSchema } from '@motorwa/shared';
 
-export const sendOtpHandler = async (req: Request, res: Response) => {
+export const registerHandler = async (req: Request, res: Response) => {
   try {
-    const { phone } = sendOtpSchema.parse(req.body);
+    const { username, password, fullName, phone, email } = registerSchema.parse(req.body);
 
-    const success = await sendOtp(phone);
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username },
+          ...(phone ? [{ phone }] : []),
+          ...(email ? [{ email }] : []),
+        ],
+      },
+    });
 
-    if (!success) {
-      return res.status(500).json({ success: false, error: 'Failed to send OTP' });
+    if (existingUser) {
+      if (existingUser.username === username) {
+        return res.status(409).json({ success: false, error: 'Username already taken' });
+      }
+      if (phone && existingUser.phone === phone) {
+        return res.status(409).json({ success: false, error: 'Phone number already registered' });
+      }
+      if (email && existingUser.email === email) {
+        return res.status(409).json({ success: false, error: 'Email already registered' });
+      }
     }
 
-    res.json({ success: true, data: { message: 'OTP sent successfully' } });
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        username,
+        passwordHash,
+        fullName,
+        ...(phone ? { phone, isPhoneVerified: false } : {}),
+        ...(email ? { email } : {}),
+      },
+    });
+
+    const accessToken = generateAccessToken({
+      userId: user.id,
+      role: user.role,
+      isVerified: user.isIdVerified,
+    });
+
+    const refreshToken = await generateRefreshToken(
+      user.id,
+      req.headers['user-agent'],
+      req.ip
+    );
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        accessToken,
+        user: {
+          id: user.id,
+          username: user.username,
+          fullName: user.fullName,
+          phone: user.phone,
+          email: user.email,
+          role: user.role,
+          isPhoneVerified: user.isPhoneVerified,
+          isIdVerified: user.isIdVerified,
+        },
+      },
+    });
   } catch (error: any) {
     if (error.errors) {
       return res.status(400).json({ success: false, error: 'Validation failed', details: error.errors });
     }
-    res.status(500).json({ success: false, error: 'Failed to send OTP' });
+    if (error.code === 'P2002') {
+      return res.status(409).json({ success: false, error: 'Username already taken' });
+    }
+    res.status(500).json({ success: false, error: 'Registration failed' });
   }
 };
 
-export const verifyOtpHandler = async (req: Request, res: Response) => {
+export const loginHandler = async (req: Request, res: Response) => {
   try {
-    const { phone, code, fullName } = verifyOtpSchema.parse(req.body);
+    const { username, password } = loginSchema.parse(req.body);
 
-    const isValid = await verifyOtp(phone, code);
-
-    if (!isValid) {
-      return res.status(400).json({ success: false, error: 'Invalid or expired OTP' });
-    }
-
-    let user = await prisma.user.findUnique({ where: { phone } });
+    const user = await prisma.user.findUnique({
+      where: { username },
+    });
 
     if (!user) {
-      if (!fullName) {
-        return res.status(400).json({ success: false, error: 'Full name required for new accounts' });
-      }
-
-      user = await prisma.user.create({
-        data: {
-          phone,
-          fullName,
-          isPhoneVerified: true,
-        },
-      });
-    } else {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { isPhoneVerified: true, lastLoginAt: new Date() },
-      });
+      return res.status(401).json({ success: false, error: 'Invalid username or password' });
     }
+
+    if (user.isBanned) {
+      return res.status(403).json({ success: false, error: 'Account suspended' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
+
+    if (!validPassword) {
+      return res.status(401).json({ success: false, error: 'Invalid username or password' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
 
     const accessToken = generateAccessToken({
       userId: user.id,
@@ -79,8 +140,10 @@ export const verifyOtpHandler = async (req: Request, res: Response) => {
         accessToken,
         user: {
           id: user.id,
-          phone: user.phone,
+          username: user.username,
           fullName: user.fullName,
+          phone: user.phone,
+          email: user.email,
           role: user.role,
           isPhoneVerified: user.isPhoneVerified,
           isIdVerified: user.isIdVerified,
@@ -91,13 +154,13 @@ export const verifyOtpHandler = async (req: Request, res: Response) => {
     if (error.errors) {
       return res.status(400).json({ success: false, error: 'Validation failed', details: error.errors });
     }
-    res.status(500).json({ success: false, error: 'Failed to verify OTP' });
+    res.status(500).json({ success: false, error: 'Login failed' });
   }
 };
 
 export const refreshHandler = async (req: Request, res: Response) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({ success: false, error: 'Refresh token required' });

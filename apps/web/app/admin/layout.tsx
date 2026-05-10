@@ -3,17 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Car, MessageSquare, Heart, Settings, LogOut, User, Menu, X } from 'lucide-react';
+import {
+  LayoutDashboard, Car, Users, CreditCard, Flag, Store,
+  Megaphone, FileText, LogOut, Menu, X,
+} from 'lucide-react';
 
 const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-  { href: '/dashboard/listings', icon: Car, label: 'My Listings' },
-  { href: '/dashboard/messages', icon: MessageSquare, label: 'Messages', badge: 3 },
-  { href: '/dashboard/saved', icon: Heart, label: 'Saved Cars' },
-  { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
+  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/listings', icon: Car, label: 'Listings' },
+  { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/payments', icon: CreditCard, label: 'Payments' },
+  { href: '/admin/reports', icon: Flag, label: 'Reports' },
+  { href: '/admin/dealers', icon: Store, label: 'Dealers' },
+  { href: '/admin/banners', icon: Megaphone, label: 'Banners' },
+  { href: '/admin/logs', icon: FileText, label: 'Audit Logs' },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -32,11 +38,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.data.role === 'ADMIN') {
           setUser(data.data);
         } else {
-          localStorage.removeItem('accessToken');
-          router.push('/login');
+          router.push('/dashboard');
         }
       } catch {
         router.push('/login');
@@ -64,27 +69,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-cream flex">
-      {/* Mobile overlay */}
+    <div className="min-h-screen bg-cream flex pt-0">
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed lg:sticky top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 transform transition-transform z-50 lg:z-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-navy rounded-full flex items-center justify-center text-white font-bold">
-              {user.fullName?.charAt(0)}
+      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-navy text-white flex flex-col transform transition-transform z-50 lg:z-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-display text-xl font-bold text-gold">MotorWa</span>
+              <span className="font-display text-xl font-light ml-1">Admin</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-gray-900 truncate">{user.fullName}</div>
-              <div className="text-sm text-gray-500">@{user.username || user.phone}</div>
-            </div>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1">
+              <X size={20} />
+            </button>
           </div>
+          <div className="text-sm text-gray-400 mt-2">{user.fullName}</div>
         </div>
 
-        <nav className="p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -92,37 +96,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                 pathname === item.href
-                  ? 'bg-navy text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-white/10 text-gold'
+                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
               <item.icon size={18} />
               {item.label}
-              {item.badge && (
-                <span className="ml-auto bg-gold text-navy text-xs px-2 py-0.5 rounded-full font-bold">
-                  {item.badge}
-                </span>
-              )}
             </Link>
           ))}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
-          <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-error hover:bg-error/5 w-full transition-colors">
+        <div className="p-4 border-t border-white/10">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-gray-300 hover:bg-white/5 w-full">
             <LogOut size={18} />
             Logout
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 min-w-0">
         <div className="lg:hidden flex items-center gap-4 p-4 bg-white border-b">
           <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-gray-100 rounded-lg">
             <Menu size={20} />
           </button>
           <h1 className="font-semibold text-gray-900">
-            {navItems.find((item) => item.href === pathname)?.label || 'Dashboard'}
+            {navItems.find((item) => item.href === pathname)?.label || 'Admin'}
           </h1>
         </div>
         <div className="p-4 lg:p-8">{children}</div>

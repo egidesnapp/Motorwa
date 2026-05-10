@@ -2,10 +2,14 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Menu, X, MessageSquare, User, PlusCircle } from 'lucide-react';
 
 export default function Header() {
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  if (pathname.startsWith('/admin')) return null;
 
   return (
     <header className="sticky top-0 z-50 bg-navy text-white shadow-lg">

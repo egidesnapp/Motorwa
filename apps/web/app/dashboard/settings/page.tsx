@@ -96,8 +96,12 @@ export default function SettingsPage() {
             <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input w-full" />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+            <input type="text" value={user.username} className="input w-full bg-gray-50" disabled />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-            <input type="text" value={user.phone} className="input w-full bg-gray-50" disabled />
+            <input type="text" value={user.phone || 'Not provided'} className="input w-full bg-gray-50" disabled />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
