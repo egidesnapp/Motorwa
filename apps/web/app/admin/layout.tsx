@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      router.push('/login');
+      router.push('/admin/login');
       return;
     }
 
@@ -41,10 +41,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (data.success && data.data.role === 'ADMIN') {
           setUser(data.data);
         } else {
-          router.push('/dashboard');
+          localStorage.removeItem('accessToken');
+          router.push('/admin/login');
         }
       } catch {
-        router.push('/login');
+        router.push('/admin/login');
       }
     };
     fetchUser();
@@ -57,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       headers: { Authorization: `Bearer ${token}` },
     });
     localStorage.removeItem('accessToken');
-    router.push('/');
+    router.push('/admin/login');
   };
 
   if (!user) {
